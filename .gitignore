@@ -1,0 +1,8 @@
+# Knack credentials config file
+knack-config.ps1
+
+# Search results
+knack-search-results.json
+batch-search-results.csv
+*.csv
+*.json 
