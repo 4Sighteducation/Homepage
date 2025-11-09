@@ -1,8 +1,24 @@
-# Knack credentials config file
-knack-config.ps1
+# Dependencies
+node_modules/
+package-lock.json
 
-# Search results
-knack-search-results.json
-batch-search-results.csv
-*.csv
-*.json 
+# Build output is tracked (needed for CDN)
+# dist/
+
+# Logs
+npm-debug.log*
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+.npmrc
