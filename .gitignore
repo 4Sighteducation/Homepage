@@ -22,3 +22,11 @@ Thumbs.db
 # Temp
 *.tmp
 .npmrc
+
+# Archive loader (kept for reference, not deployed)
+KnackAppLoader(copy).js
+
+# Generated reports (local-only)
+loader-assets-*.json
+loader-security-hotspots.json
+SECURITY_TEMP_HARDENING_GUIDE.md
