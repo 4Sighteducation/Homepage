@@ -20,3 +20,9 @@ Caches Knack records for staff admin report pages.
 
 ### Cache Table
 Apply the migration in `supabase/migrations/20260114_staff_admin_cache.sql`.
+
+### Actions
+- `reportProfilesStudent`: cache a single Knack record by object + record ID
+- `knackCache`: cache an arbitrary Knack GET URL (same host as `KNACK_API_URL`)
+- `cacheGet`: fetch cached payload by key
+- `cacheSet`: store a payload by key

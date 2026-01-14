@@ -23,9 +23,11 @@ const supabase = createClient(SUPABASE_URL ?? "", SUPABASE_SERVICE_ROLE_KEY ?? "
 
 type CacheRequest = {
   action: string;
-  cacheKey: string;
-  knackObject: string;
-  recordId: string;
+  cacheKey?: string;
+  knackObject?: string;
+  recordId?: string;
+  knackUrl?: string;
+  payload?: unknown;
   force?: boolean;
 };
 
@@ -51,31 +53,83 @@ serve(async (req) => {
     });
   }
 
-  if (body.action !== "reportProfilesStudent") {
-    return new Response(JSON.stringify({ error: "Unsupported action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  if (!body.cacheKey || !body.knackObject || !body.recordId) {
-    return new Response(JSON.stringify({ error: "Missing cacheKey, knackObject, or recordId" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   const ttlMs = Math.max(CACHE_TTL_MINUTES, 1) * 60 * 1000;
 
   try {
-    if (!body.force) {
-      const { data: cached, error: cacheError } = await supabase
+    if (body.action === "cacheGet") {
+      if (!body.cacheKey) {
+        return new Response(JSON.stringify({ error: "Missing cacheKey" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: cached } = await supabase
         .from("staff_admin_cache")
         .select("payload, updated_at")
         .eq("cache_key", body.cacheKey)
         .maybeSingle();
 
-      if (!cacheError && cached?.payload && cached.updated_at) {
+      if (cached?.payload && cached.updated_at) {
+        const updatedAtMs = new Date(cached.updated_at).getTime();
+        if (Date.now() - updatedAtMs < ttlMs) {
+          return new Response(
+            JSON.stringify({
+              source: "cache",
+              updatedAt: cached.updated_at,
+              data: cached.payload,
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+      }
+
+      return new Response(JSON.stringify({ source: "miss" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (body.action === "cacheSet") {
+      if (!body.cacheKey) {
+        return new Response(JSON.stringify({ error: "Missing cacheKey" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const nowIso = new Date().toISOString();
+      await supabase.from("staff_admin_cache").upsert({
+        cache_key: body.cacheKey,
+        payload: body.payload ?? null,
+        updated_at: nowIso,
+      });
+      return new Response(JSON.stringify({ source: "stored", updatedAt: nowIso }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (body.action !== "reportProfilesStudent" && body.action !== "knackCache") {
+      return new Response(JSON.stringify({ error: "Unsupported action" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!body.cacheKey) {
+      return new Response(JSON.stringify({ error: "Missing cacheKey" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!body.force) {
+      const { data: cached } = await supabase
+        .from("staff_admin_cache")
+        .select("payload, updated_at")
+        .eq("cache_key", body.cacheKey)
+        .maybeSingle();
+
+      if (cached?.payload && cached.updated_at) {
         const updatedAtMs = new Date(cached.updated_at).getTime();
         if (Date.now() - updatedAtMs < ttlMs) {
           return new Response(
@@ -92,7 +146,36 @@ serve(async (req) => {
       }
     }
 
-    const knackUrl = `${KNACK_API_URL}/objects/${body.knackObject}/records/${body.recordId}`;
+    let knackUrl = "";
+    if (body.action === "reportProfilesStudent") {
+      if (!body.knackObject || !body.recordId) {
+        return new Response(JSON.stringify({ error: "Missing knackObject or recordId" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      knackUrl = `${KNACK_API_URL}/objects/${body.knackObject}/records/${body.recordId}`;
+    } else {
+      if (!body.knackUrl) {
+        return new Response(JSON.stringify({ error: "Missing knackUrl" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (body.knackUrl.startsWith("http")) {
+        if (!body.knackUrl.startsWith(KNACK_API_URL)) {
+          return new Response(JSON.stringify({ error: "Invalid knackUrl host" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        knackUrl = body.knackUrl;
+      } else {
+        const path = body.knackUrl.startsWith("/") ? body.knackUrl : `/${body.knackUrl}`;
+        knackUrl = `${KNACK_API_URL}${path}`;
+      }
+    }
+
     const knackResponse = await fetch(knackUrl, {
       method: "GET",
       headers: {
