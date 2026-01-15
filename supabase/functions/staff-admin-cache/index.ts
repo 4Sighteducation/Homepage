@@ -53,6 +53,25 @@ serve(async (req) => {
     });
   }
 
+  // Lightweight request logging for troubleshooting (no secrets included).
+  try {
+    console.info("[staff-admin-cache] request", {
+      action: body?.action ?? null,
+      hasCacheKey: Boolean(body?.cacheKey),
+      hasKnackUrl: Boolean(body?.knackUrl),
+      hasKnackObject: Boolean(body?.knackObject),
+      hasRecordId: Boolean(body?.recordId),
+      force: Boolean(body?.force),
+    });
+  } catch (_) {}
+
+  if (!body?.action) {
+    return new Response(JSON.stringify({ error: "Missing action" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const ttlMs = Math.max(CACHE_TTL_MINUTES, 1) * 60 * 1000;
 
   try {
@@ -109,10 +128,16 @@ serve(async (req) => {
     }
 
     if (body.action !== "reportProfilesStudent" && body.action !== "knackCache") {
-      return new Response(JSON.stringify({ error: "Unsupported action" }), {
+      return new Response(
+        JSON.stringify({
+          error: "Unsupported action",
+          supported: ["cacheGet", "cacheSet", "reportProfilesStudent", "knackCache"],
+        }),
+        {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        },
+      );
     }
 
     if (!body.cacheKey) {
