@@ -40,6 +40,12 @@ type StudyPlannerContext = {
   error?: string;
 };
 
+type ContextRequestBody = {
+  email?: string | null;
+  name?: string | null;
+  school_name?: string | null;
+};
+
 function envAny(keys: string[], fallback = ""): string {
   for (const k of keys) {
     const v = Deno.env.get(k);
@@ -128,9 +134,24 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" }, corsHeaders);
 
-  const userToken = getKnackUserToken(req);
-  const knackUser = await getKnackSessionUser(userToken);
-  const email = String(knackUser?.email || "").trim().toLowerCase();
+  const body = (await req.json().catch(() => null)) as ContextRequestBody | null;
+  const bodyEmail = String(body?.email || "").trim().toLowerCase();
+
+  // Prefer explicit email from the (Knack-authenticated) client.
+  // This avoids brittle token forwarding and matches other Knack-embedded apps.
+  let email = bodyEmail;
+  let displayName = String(body?.name || "").trim() || null;
+  let schoolName = String(body?.school_name || "").trim() || null;
+
+  // Fallback: derive email from Knack token if provided.
+  let knackUser: any = null;
+  if (!email) {
+    const userToken = getKnackUserToken(req);
+    knackUser = await getKnackSessionUser(userToken);
+    email = String(knackUser?.email || "").trim().toLowerCase();
+    displayName = displayName || knackUser?.name || null;
+    schoolName = schoolName || knackUser?.school || knackUser?.field_122_raw || null;
+  }
 
   if (!email) {
     return json(401, { ok: false, error: "Missing or invalid Knack user token" }, corsHeaders);
@@ -194,9 +215,9 @@ serve(async (req) => {
     {
       ok: true,
       user: {
-        name: knackUser?.name || null,
+        name: displayName,
         email,
-        school_name: knackUser?.school || knackUser?.field_122_raw || null,
+        school_name: schoolName,
       },
       sprintTypes: sprintTypesResp.data || [],
       plans: enrichedPlans,

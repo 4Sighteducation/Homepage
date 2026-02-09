@@ -17,6 +17,9 @@ type SavePlanRequest = {
   weekStartDate: string;
   status?: string | null;
   sessions?: SaveSession[];
+  email?: string | null;
+  name?: string | null;
+  school_name?: string | null;
 };
 
 function envAny(keys: string[], fallback = ""): string {
@@ -102,14 +105,23 @@ serve(async (req) => {
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" }, corsHeaders);
 
   const userToken = getKnackUserToken(req);
-  const knackUser = await getKnackSessionUser(userToken);
-  const email = String(knackUser?.email || "").trim().toLowerCase();
+  const body = (await req.json().catch(() => null)) as SavePlanRequest | null;
+
+  // Prefer explicit email from client.
+  let email = String(body?.email || "").trim().toLowerCase();
+  let displayName = String(body?.name || "").trim() || null;
+
+  // Fallback to Knack lookup if email wasn't provided.
+  const knackUser = email ? null : await getKnackSessionUser(userToken);
+  if (!email) {
+    email = String(knackUser?.email || "").trim().toLowerCase();
+    displayName = displayName || knackUser?.name || null;
+  }
 
   if (!email) {
     return json(401, { ok: false, error: "Missing or invalid Knack user token" }, corsHeaders);
   }
 
-  const body = (await req.json().catch(() => null)) as SavePlanRequest | null;
   if (!body?.weekStartDate) {
     return json(400, { ok: false, error: "Missing weekStartDate" }, corsHeaders);
   }
@@ -139,7 +151,7 @@ serve(async (req) => {
       .from("study_planner_plans")
       .insert({
         student_email: email,
-        student_name: knackUser?.name || null,
+        student_name: displayName,
         week_start_date: body.weekStartDate,
         status,
       })

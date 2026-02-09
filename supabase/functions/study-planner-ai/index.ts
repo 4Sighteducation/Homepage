@@ -4,6 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 type GenerateRequest = {
   prompt?: string;
   weekStartDate?: string;
+  email?: string | null;
+  name?: string | null;
 };
 
 type DraftSession = {
@@ -135,16 +137,22 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" }, corsHeaders);
 
-  const userToken = getKnackUserToken(req);
-  const knackUser = await getKnackSessionUser(userToken);
-  const email = String(knackUser?.email || "").trim().toLowerCase();
-  if (!email) return json(401, { ok: false, error: "Missing or invalid Knack user token" }, corsHeaders);
-
   if (!OPENAI_API_KEY) return json(500, { ok: false, error: "AI not configured" }, corsHeaders);
 
   const body = (await req.json().catch(() => null)) as GenerateRequest | null;
   const prompt = String(body?.prompt || "").trim();
   if (!prompt) return json(400, { ok: false, error: "Missing prompt" }, corsHeaders);
+
+  // Prefer explicit email from client; fallback to Knack token.
+  let email = String(body?.email || "").trim().toLowerCase();
+  let displayName = String(body?.name || "").trim() || null;
+  if (!email) {
+    const userToken = getKnackUserToken(req);
+    const knackUser = await getKnackSessionUser(userToken);
+    email = String(knackUser?.email || "").trim().toLowerCase();
+    displayName = displayName || knackUser?.name || null;
+  }
+  if (!email) return json(401, { ok: false, error: "Missing or invalid Knack user token" }, corsHeaders);
 
   const weekStartDate = String(body?.weekStartDate || "").trim() || nextMondayISO();
 
@@ -191,7 +199,7 @@ serve(async (req) => {
 
   const userMsg = [
     `weekStartDate: ${weekStartDate}`,
-    `student: ${knackUser?.name || email}`,
+    `student: ${displayName || email}`,
     `prompt: ${prompt}`,
   ].join("\n");
 
