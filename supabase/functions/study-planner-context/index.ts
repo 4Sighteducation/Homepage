@@ -79,12 +79,14 @@ function cors(origin: string | null) {
     Vary: "Origin",
     "Access-Control-Allow-Methods": "POST,OPTIONS",
     "Access-Control-Allow-Headers":
-      "content-type, authorization, x-knack-user-token",
+      "content-type, authorization, apikey, x-knack-user-token",
   };
 }
 
 function getKnackUserToken(req: Request) {
-  return req.headers.get("authorization")?.trim() || req.headers.get("x-knack-user-token")?.trim() || "";
+  // IMPORTANT: `authorization` is reserved for Supabase gateway auth (Bearer <anonKey>).
+  // We pass the Knack user token via `x-knack-user-token`.
+  return req.headers.get("x-knack-user-token")?.trim() || "";
 }
 
 async function getKnackSessionUser(userToken: string) {
