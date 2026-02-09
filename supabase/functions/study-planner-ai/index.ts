@@ -83,7 +83,8 @@ function getKnackUserToken(req: Request) {
 }
 
 async function getKnackSessionUser(userToken: string) {
-  if (!userToken) return null;
+  const clean = String(userToken || "").trim().replace(/^Bearer\s+/i, "");
+  if (!clean) return null;
   const url = `${KNACK_API_URL.replace(/\/$/, "")}/session`;
   const resp = await fetch(url, {
     method: "GET",
@@ -91,7 +92,7 @@ async function getKnackSessionUser(userToken: string) {
       "X-Knack-Application-Id": KNACK_APP_ID,
       "X-Knack-REST-API-Key": KNACK_API_KEY,
       "Content-Type": "application/json",
-      Authorization: userToken,
+      Authorization: clean,
     },
   });
   if (!resp.ok) return null;
