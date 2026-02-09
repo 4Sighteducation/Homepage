@@ -84,8 +84,14 @@ function cors(origin: string | null) {
 }
 
 function getKnackUserToken(req: Request) {
-  // IMPORTANT: `authorization` is reserved for Supabase gateway auth (Bearer <anonKey>).
-  // We pass the Knack user token via `x-knack-user-token`.
+  // Supabase gateway auth may use:
+  // - Authorization: Bearer <anonKey>, or
+  // - apikey: <anonKey>
+  //
+  // In VESPA/Knack integrations, the Knack user token is often sent as Authorization: <token>.
+  // We accept BOTH to be resilient across environments.
+  const auth = req.headers.get("authorization")?.trim() || "";
+  if (auth && !/^Bearer\s+/i.test(auth)) return auth;
   return req.headers.get("x-knack-user-token")?.trim() || "";
 }
 
