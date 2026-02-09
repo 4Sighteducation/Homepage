@@ -7,6 +7,7 @@ type StudyPlannerContext = {
     name?: string | null;
     email?: string | null;
     school_name?: string | null;
+    qualification_level?: string | null; // e.g. GCSE, A_LEVEL
   };
   sprintTypes?: Array<{
     id: string;
@@ -46,6 +47,7 @@ type ContextRequestBody = {
   email?: string | null;
   name?: string | null;
   school_name?: string | null;
+  qualification_level?: string | null;
 };
 
 function envAny(keys: string[], fallback = ""): string {
@@ -129,6 +131,55 @@ function json(status: number, body: StudyPlannerContext, headers: Record<string,
   });
 }
 
+function normalizeQualificationLevel(raw: unknown): string | null {
+  const v = String(raw || "").trim();
+  if (!v) return null;
+  const u = v.toUpperCase().replace(/\s+/g, "_");
+
+  if (u.includes("GCSE") || u === "KS4" || u.includes("KEY_STAGE_4")) return "GCSE";
+  if (
+    u.includes("A_LEVEL") ||
+    u.includes("A-LEVEL") ||
+    u.includes("ALEVEL") ||
+    u.includes("AS_LEVEL") ||
+    u.includes("AS-LEVEL") ||
+    u.includes("SIXTH_FORM") ||
+    u.includes("KS5") ||
+    u.includes("KEY_STAGE_5")
+  ) return "A_LEVEL";
+
+  // Year group heuristic
+  const m = u.match(/\b(\d{1,2})\b/);
+  const n = m ? Number(m[1]) : NaN;
+  if (n === 10 || n === 11) return "GCSE";
+  if (n === 12 || n === 13) return "A_LEVEL";
+
+  if (u === "GCSE" || u === "A_LEVEL") return u;
+  return null;
+}
+
+async function resolveQualificationLevelFromSupabase(email: string): Promise<string | null> {
+  // Best-effort: derive level from student record (year_group/course)
+  const { data: student, error } = await supabase
+    .from("students")
+    .select("year_group, course, academic_year, created_at")
+    .eq("email", email)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  if (!student) return null;
+
+  const fromYear = normalizeQualificationLevel(student.year_group);
+  if (fromYear) return fromYear;
+
+  const fromCourse = normalizeQualificationLevel(student.course);
+  if (fromCourse) return fromCourse;
+
+  return null;
+}
+
 serve(async (req) => {
   const origin = req.headers.get("origin");
   const corsHeaders = cors(origin);
@@ -144,6 +195,7 @@ serve(async (req) => {
   let email = bodyEmail;
   let displayName = String(body?.name || "").trim() || null;
   let schoolName = String(body?.school_name || "").trim() || null;
+  let qualificationLevel = normalizeQualificationLevel(body?.qualification_level);
 
   // Fallback: derive email from Knack token if provided.
   let knackUser: any = null;
@@ -157,6 +209,11 @@ serve(async (req) => {
 
   if (!email) {
     return json(401, { ok: false, error: "Missing or invalid Knack user token" }, corsHeaders);
+  }
+
+  // Prefer Supabase student record for level (more stable than Knack attributes).
+  if (!qualificationLevel) {
+    qualificationLevel = await resolveQualificationLevelFromSupabase(email);
   }
 
   const [sprintTypesResp, plansResp] = await Promise.all([
@@ -222,6 +279,7 @@ serve(async (req) => {
         name: displayName,
         email,
         school_name: schoolName,
+        qualification_level: qualificationLevel,
       },
       sprintTypes: sprintTypesResp.data || [],
       plans: enrichedPlans,
