@@ -10,6 +10,7 @@ type SaveSession = {
   subject?: string | null;
   topic?: string | null;
   notes?: string | null;
+  exam_board?: string | null;
 };
 
 type SavePlanRequest = {
@@ -188,6 +189,7 @@ serve(async (req) => {
       subject: session.subject || null,
       topic: session.topic || null,
       notes: session.notes || null,
+      exam_board: session.exam_board || null,
     }));
     const { error } = await supabase.from("study_planner_plan_sessions").insert(inserts);
     if (error) {
