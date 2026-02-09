@@ -8,6 +8,8 @@ type StudyPlannerContext = {
     email?: string | null;
     school_name?: string | null;
     qualification_level?: string | null; // e.g. GCSE, A_LEVEL
+    default_exam_board?: string | null;
+    subjects?: Array<{ subject: string; exam_board?: string | null }> | null;
   };
   sprintTypes?: Array<{
     id: string;
@@ -180,6 +182,16 @@ async function resolveQualificationLevelFromSupabase(email: string): Promise<str
   return null;
 }
 
+async function getStudentPreferences(email: string) {
+  const { data, error } = await supabase
+    .from("study_planner_student_preferences")
+    .select("qualification_level, default_exam_board, subjects")
+    .eq("student_email", email)
+    .maybeSingle();
+  if (error) return null;
+  return data || null;
+}
+
 serve(async (req) => {
   const origin = req.headers.get("origin");
   const corsHeaders = cors(origin);
@@ -211,10 +223,11 @@ serve(async (req) => {
     return json(401, { ok: false, error: "Missing or invalid Knack user token" }, corsHeaders);
   }
 
-  // Prefer Supabase student record for level (more stable than Knack attributes).
-  if (!qualificationLevel) {
-    qualificationLevel = await resolveQualificationLevelFromSupabase(email);
-  }
+  const prefs = await getStudentPreferences(email);
+
+  // Prefer saved preferences; then Supabase student record; then body/Knack heuristics.
+  if (!qualificationLevel) qualificationLevel = normalizeQualificationLevel(prefs?.qualification_level);
+  if (!qualificationLevel) qualificationLevel = await resolveQualificationLevelFromSupabase(email);
 
   const [sprintTypesResp, plansResp] = await Promise.all([
     supabase
@@ -280,6 +293,8 @@ serve(async (req) => {
         email,
         school_name: schoolName,
         qualification_level: qualificationLevel,
+        default_exam_board: prefs?.default_exam_board ?? null,
+        subjects: Array.isArray(prefs?.subjects) ? (prefs?.subjects as any) : null,
       },
       sprintTypes: sprintTypesResp.data || [],
       plans: enrichedPlans,

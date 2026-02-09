@@ -21,6 +21,7 @@ type SavePlanRequest = {
   email?: string | null;
   name?: string | null;
   school_name?: string | null;
+  qualification_level?: string | null; // GCSE / A_LEVEL
 };
 
 function envAny(keys: string[], fallback = ""): string {
@@ -96,6 +97,87 @@ function json(status: number, body: Record<string, unknown>, headers: Record<str
     status,
     headers: { ...headers, "Content-Type": "application/json" },
   });
+}
+
+function normalizeQualificationLevel(raw: unknown): string | null {
+  const v = String(raw || "").trim();
+  if (!v) return null;
+  const u = v.toUpperCase().replace(/\s+/g, "_");
+  if (u.includes("GCSE") || u === "KS4" || u.includes("KEY_STAGE_4")) return "GCSE";
+  if (
+    u.includes("A_LEVEL") ||
+    u.includes("A-LEVEL") ||
+    u.includes("ALEVEL") ||
+    u.includes("AS_LEVEL") ||
+    u.includes("AS-LEVEL") ||
+    u.includes("SIXTH_FORM") ||
+    u.includes("KS5") ||
+    u.includes("KEY_STAGE_5")
+  ) return "A_LEVEL";
+  const m = u.match(/\b(\d{1,2})\b/);
+  const n = m ? Number(m[1]) : NaN;
+  if (n === 10 || n === 11) return "GCSE";
+  if (n === 12 || n === 13) return "A_LEVEL";
+  if (u === "GCSE" || u === "A_LEVEL") return u;
+  return null;
+}
+
+async function resolveQualificationLevelFromSupabase(email: string): Promise<string | null> {
+  const { data: student, error } = await supabase
+    .from("students")
+    .select("year_group, course, created_at")
+    .eq("email", email)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !student) return null;
+  return normalizeQualificationLevel(student.year_group) || normalizeQualificationLevel(student.course) || null;
+}
+
+function buildSubjectPrefsFromSessions(sessions: SaveSession[]) {
+  const counts = new Map<string, Map<string, number>>(); // subject -> examBoard -> count
+  for (const s of sessions) {
+    const subject = String(s.subject || "").trim();
+    if (!subject) continue;
+    const board = String(s.exam_board || "").trim().toUpperCase();
+    if (!counts.has(subject)) counts.set(subject, new Map());
+    if (board) {
+      const m = counts.get(subject)!;
+      m.set(board, (m.get(board) || 0) + 1);
+    }
+  }
+
+  const subjects = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
+  const subjectPrefs = subjects.map((subject) => {
+    const boardCounts = counts.get(subject) || new Map();
+    let bestBoard: string | null = null;
+    let bestCount = -1;
+    for (const [b, c] of boardCounts.entries()) {
+      if (c > bestCount) {
+        bestBoard = b;
+        bestCount = c;
+      }
+    }
+    return { subject, exam_board: bestBoard };
+  });
+
+  // Default exam board: most common across all sessions
+  const globalBoardCounts = new Map<string, number>();
+  for (const s of sessions) {
+    const b = String(s.exam_board || "").trim().toUpperCase();
+    if (!b) continue;
+    globalBoardCounts.set(b, (globalBoardCounts.get(b) || 0) + 1);
+  }
+  let defaultExamBoard: string | null = null;
+  let defaultCount = -1;
+  for (const [b, c] of globalBoardCounts.entries()) {
+    if (c > defaultCount) {
+      defaultExamBoard = b;
+      defaultCount = c;
+    }
+  }
+
+  return { subjectPrefs, defaultExamBoard };
 }
 
 serve(async (req) => {
@@ -195,6 +277,27 @@ serve(async (req) => {
     if (error) {
       return json(500, { ok: false, error: error.message }, corsHeaders);
     }
+  }
+
+  // Upsert reusable student preferences (subjects/exam boards/level)
+  try {
+    const { subjectPrefs, defaultExamBoard } = buildSubjectPrefsFromSessions(sessions);
+    let q = normalizeQualificationLevel(body?.qualification_level);
+    if (!q) q = await resolveQualificationLevelFromSupabase(email);
+    const { error: prefErr } = await supabase
+      .from("study_planner_student_preferences")
+      .upsert({
+        student_email: email,
+        qualification_level: q,
+        subjects: subjectPrefs,
+        default_exam_board: defaultExamBoard,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "student_email" });
+    if (prefErr) {
+      console.warn("[study-planner-save] Preference upsert failed:", prefErr.message);
+    }
+  } catch (e) {
+    console.warn("[study-planner-save] Preference upsert error:", e?.message || e);
   }
 
   return json(
