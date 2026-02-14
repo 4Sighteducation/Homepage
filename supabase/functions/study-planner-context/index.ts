@@ -37,6 +37,7 @@ type StudyPlannerContext = {
     plan_id: string;
     day_of_week: number;
     start_time: string;
+    actual_start_time?: string | null;
     duration_minutes: number;
     sprint_type_id: string | null;
     subject: string | null;
@@ -272,7 +273,7 @@ serve(async (req) => {
     ? await supabase
         .from("study_planner_plan_sessions")
         .select(
-          "id, plan_id, day_of_week, start_time, duration_minutes, sprint_type_id, subject, topic, notes, exam_board, staff_comment, staff_comment_by_email, staff_comment_by_name, staff_comment_updated_at",
+          "id, plan_id, day_of_week, start_time, actual_start_time, duration_minutes, sprint_type_id, subject, topic, notes, exam_board, staff_comment, staff_comment_by_email, staff_comment_by_name, staff_comment_updated_at",
         )
         .in("plan_id", planIds)
     : { data: [], error: null };

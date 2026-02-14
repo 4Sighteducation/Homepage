@@ -5,6 +5,7 @@ type SaveSession = {
   id?: string | null;
   day_of_week: number;
   start_time: string;
+  actual_start_time?: string | null;
   duration_minutes: number;
   sprint_type_id?: string | null;
   subject?: string | null;
@@ -266,6 +267,7 @@ serve(async (req) => {
       plan_id: planRecord?.id,
       day_of_week: session.day_of_week,
       start_time: session.start_time,
+      actual_start_time: session.actual_start_time || null,
       duration_minutes: session.duration_minutes,
       sprint_type_id: session.sprint_type_id || null,
       subject: session.subject || null,
