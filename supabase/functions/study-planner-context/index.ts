@@ -50,6 +50,9 @@ type ContextRequestBody = {
   name?: string | null;
   school_name?: string | null;
   qualification_level?: string | null;
+  plan_id?: string | null;
+  planId?: string | null;
+  active_plan_id?: string | null;
 };
 
 function envAny(keys: string[], fallback = ""): string {
@@ -201,6 +204,9 @@ serve(async (req) => {
 
   const body = (await req.json().catch(() => null)) as ContextRequestBody | null;
   const bodyEmail = String(body?.email || "").trim().toLowerCase();
+  const requestedPlanId = String(
+    body?.plan_id || body?.planId || body?.active_plan_id || "",
+  ).trim() || null;
 
   // Prefer explicit email from the (Knack-authenticated) client.
   // This avoids brittle token forwarding and matches other Knack-embedded apps.
@@ -239,6 +245,7 @@ serve(async (req) => {
       .from("study_planner_plans")
       .select("id, week_start_date, status, updated_at")
       .eq("student_email", email)
+      .neq("status", "deleted")
       .order("week_start_date", { ascending: false })
       .limit(5),
   ]);
@@ -250,7 +257,9 @@ serve(async (req) => {
     return json(500, { ok: false, error: plansResp.error.message }, corsHeaders);
   }
 
-  const plans = plansResp.data || [];
+  const plans = (plansResp.data || []).filter((p) =>
+    String(p?.status || "").trim().toLowerCase() !== "deleted"
+  );
   const planIds = plans.map((plan) => plan.id);
 
   const sessionsResp = planIds.length
@@ -279,7 +288,10 @@ serve(async (req) => {
     session_count: sessionCounts[plan.id] || 0,
   }));
 
-  const activePlan = enrichedPlans[0] || null;
+  const activePlan =
+    (requestedPlanId ? enrichedPlans.find((p) => p.id === requestedPlanId) : null) ||
+    enrichedPlans[0] ||
+    null;
   const activeSessions = activePlan
     ? sessions.filter((session) => session.plan_id === activePlan.id)
     : [];
