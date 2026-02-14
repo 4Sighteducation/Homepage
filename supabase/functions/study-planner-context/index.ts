@@ -41,6 +41,10 @@ type StudyPlannerContext = {
     topic: string | null;
     notes?: string | null;
     exam_board?: string | null;
+    staff_comment?: string | null;
+    staff_comment_by_email?: string | null;
+    staff_comment_by_name?: string | null;
+    staff_comment_updated_at?: string | null;
   }>;
   error?: string;
 };
@@ -266,7 +270,7 @@ serve(async (req) => {
     ? await supabase
         .from("study_planner_plan_sessions")
         .select(
-          "id, plan_id, day_of_week, start_time, duration_minutes, sprint_type_id, subject, topic, notes, exam_board",
+          "id, plan_id, day_of_week, start_time, duration_minutes, sprint_type_id, subject, topic, notes, exam_board, staff_comment, staff_comment_by_email, staff_comment_by_name, staff_comment_updated_at",
         )
         .in("plan_id", planIds)
     : { data: [], error: null };
