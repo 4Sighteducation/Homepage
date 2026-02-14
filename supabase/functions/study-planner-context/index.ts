@@ -24,6 +24,8 @@ type StudyPlannerContext = {
     week_start_date: string;
     status: string | null;
     session_count?: number;
+    comment_count?: number;
+    has_staff_comments?: boolean;
   }>;
   activePlan?: {
     id: string;
@@ -284,12 +286,20 @@ serve(async (req) => {
     acc[item.plan_id] = (acc[item.plan_id] || 0) + 1;
     return acc;
   }, {});
+  const commentCounts = sessions.reduce<Record<string, number>>((acc, item) => {
+    const hasComment = Boolean(String(item?.staff_comment || "").trim());
+    if (!hasComment) return acc;
+    acc[item.plan_id] = (acc[item.plan_id] || 0) + 1;
+    return acc;
+  }, {});
 
   const enrichedPlans = plans.map((plan) => ({
     id: plan.id,
     week_start_date: plan.week_start_date,
     status: plan.status,
     session_count: sessionCounts[plan.id] || 0,
+    comment_count: commentCounts[plan.id] || 0,
+    has_staff_comments: (commentCounts[plan.id] || 0) > 0,
   }));
 
   const activePlan =
