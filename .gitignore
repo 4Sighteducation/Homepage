@@ -72,8 +72,7 @@ vespa-problem-activity-mappings.json
 /*.md
 !README.md
 
-# Legacy application folders
-vespa-main-loader-host/
+# Legacy application folders (vespa-main-loader-host kept for Heroku deployment)
 vespa-student-coach/
 vespa-coach-clean-deploy/
 vespa_server-master/
