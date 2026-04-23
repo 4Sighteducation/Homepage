@@ -30,3 +30,62 @@ KnackAppLoader(copy).js
 loader-assets-*.json
 loader-security-hotspots.json
 SECURITY_TEMP_HARDENING_GUIDE.md
+
+# ===== SECURITY CLEANUP (April 2026) =====
+# All non-production files removed from tracking.
+# Only tracked folders: vespa-main/, VESPAReportV2/, supabase/
+
+# Data files (PII, exports, schema dumps)
+*.csv
+*.pdf
+*.docx
+
+# Logs and operational files
+*.log
+heroku_logs.txt
+
+# Images (personal photos, screenshots)
+*.jpg
+*.png
+*.webp
+
+# Database records and JSON data exports
+record-*.json
+object_*.json
+subjectinformation*.json
+reporttext_*.json
+Activitesjson2.json
+tutor_activitie_withjson.json
+tutoractivities_pretty_mapped_with_mappings.json
+vespa-problem-activity-mappings.json
+
+# Scripts (PowerShell, Python, SQL)
+*.ps1
+*.py
+*.sql
+*.astro
+
+# Legacy/development text files
+*.txt
+
+# Handover and documentation markdown files (root level only)
+/*.md
+!README.md
+
+# Legacy application folders
+vespa-main-loader-host/
+vespa-student-coach/
+vespa-coach-clean-deploy/
+vespa_server-master/
+AIVESPACoach/
+student-emulator-backend/
+vespa-student-coach-backend/
+
+# Environment and config files
+.env
+.env.*
+*.ini
+
+# Misc
+nul
+mmu-vespa-dashboard.html
