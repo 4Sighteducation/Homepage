@@ -1,0 +1,17 @@
+{
+  "name": "vespa-main-loader-host",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hosts the Knack loader script for VESPA Academy (thin bootstrap target).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+
