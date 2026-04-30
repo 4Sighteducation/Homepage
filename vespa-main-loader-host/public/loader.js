@@ -1675,7 +1675,7 @@ $(document).on('knack-scene-render.any', function() {
         'questionnaireV2': { // NEW: VESPA Questionnaire V2 with Supabase + Knack dual-write
             scenes: ['scene_1282'],
             views: ['view_3247'],
-            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-questionniare-v2@d1fc0385563edfa4898143d4da68cc6de7033d3c/dist/questionnaire1Q.js',
+            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/questionnaire-v2/questionnaire1Q.js',
             cssUrl: null, // CSS embedded in JS
             configBuilder: (baseConfig, sceneKey, viewKey) => ({
                 ...baseConfig,
@@ -1753,8 +1753,8 @@ $(document).on('knack-scene-render.any', function() {
         'studentActivitiesV3': {
             scenes: ['scene_1288'],
             views: ['view_3262'],
-            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-questionniare-v2@main/vespa-activities-v3/student/dist/student-activities2f.js',
-            cssUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-questionniare-v2@main/vespa-activities-v3/student/dist/student-activities2f.css',
+            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/activities-v3/student/student-activities2j.js',
+            cssUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/activities-v3/student/student-activities2j.css',
             configBuilder: (baseConfig, sceneKey, viewKey) => ({
                 ...baseConfig,
                 appType: 'studentActivitiesV3',
@@ -1766,7 +1766,7 @@ $(document).on('knack-scene-render.any', function() {
                 hideOriginalView: true,
                 apiUrl: 'https://vespa-dashboard-9a1f84ee5341.herokuapp.com',
                 // Supabase config will be embedded at build time
-                problemMappingsUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-questionniare-v2@main/vespa-activities-v3/shared/vespa-problem-activity-mappings1a.json'
+                problemMappingsUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/activities-v3/shared/vespa-problem-activity-mappings1a.json'
             }),
             configGlobalVar: 'STUDENT_ACTIVITIES_V3_CONFIG',
             initializerFunctionName: 'initializeStudentActivitiesV3'
@@ -1774,8 +1774,8 @@ $(document).on('knack-scene-render.any', function() {
         'staffActivitiesMonitorV3': {
             scenes: ['scene_1290'],  // CONFIRMED: activity-monitor scene
             views: ['view_3268'],    // CONFIRMED: activity-monitor view
-            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-questionniare-v2@main/vespa-activities-v3/staff/dist/activity-dashboard-3j.js',
-            cssUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-questionniare-v2@main/vespa-activities-v3/staff/dist/activity-dashboard-3j.css',
+            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/activities-v3/staff/activity-dashboard-3j.js',
+            cssUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/activities-v3/staff/activity-dashboard-3j.css',
             configBuilder: (baseConfig, sceneKey, viewKey) => ({
                 ...baseConfig,
                 appType: 'staffActivitiesMonitorV3',
